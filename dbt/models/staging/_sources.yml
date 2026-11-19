@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: weather_api
+    schema: weather_raw
+    tables:
+      - name: raw_weather_observations
+        description: "Raw weather predictions from the Open Meteo API"

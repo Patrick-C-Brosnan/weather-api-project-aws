@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: stg_weather_observations
+    description: >
+      Latest retrieved hourly weather forecasts.
+      One row per location and forecasted hour.
+
+    columns:
+      - name: location_id
+        description: "Identifier for the forecast location."
+        data_tests:
+          - not_null
+
+      - name: observation_time
+        description: "The hour being forecast, not the retrieval time."
+        data_tests:
+          - not_null
+
+      - name: fetched_at
+        description: "When this forecast was retrieved from Open-Meteo."
+        data_tests:
+          - not_null

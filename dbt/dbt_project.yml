@@ -1,0 +1,15 @@
+name: week4_analytics
+version: "1.0.0"
+config-version: 2
+
+profile: week4_analytics
+
+model-paths: ["models"]
+test-paths: ["tests"]
+
+models:
+  week4_analytics:
+    +materialized: view
+
+    marts:
+      +materialized: table

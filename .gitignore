@@ -1,0 +1,29 @@
+# Environment and secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Airflow runtime files
+logs/
+config/airflow.cfg
+config/auth
+airflow.db
+
+# Local editor/OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Data folders in repository
+data/
+
+# Database and Docker runtime data
+postgres_data/
