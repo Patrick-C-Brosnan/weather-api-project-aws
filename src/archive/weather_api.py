@@ -1,6 +1,7 @@
 import requests
 import json
-from pathlib import Path
+from pathlib import Path 
+from storage_local import store_weather_data_local
 from datetime import datetime, timezone
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
@@ -20,14 +21,51 @@ HOURLY_VARIABLES = [
     "relative_humidity_2m",
 ]
 
-def api_call_time():
-    now = datetime.now(timezone.utc)
-    ingestion_date = now.strftime("%Y-%m-%d")          # 2026-11-13
-    file_timestamp = now.strftime("%Y%m%dT%H%M%S")     # 20261113T115900
 
-    print(ingestion_date, file_timestamp)
-    return ingestion_date, file_timestamp
+def extract_weather(
+    latitude: float,
+    longitude: float,
+    start_date: str,
+    end_date: str,
+) -> dict:
 
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "hourly": "temperature_2m,precipitation",
+        "timezone": "Europe/London",
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+
+    response = requests.get(
+        OPEN_METEO_URL,
+        params=params,
+        #headers=headers,
+        timeout=30
+    )
+    
+    response.raise_for_status()
+    payload=response.json()
+
+    validate_weather_payload(payload)
+
+    output_dir = Path(
+        f"/opt/airflow/data/raw/weather/extraction_date={start_date}"
+    )
+    
+    local_output = store_weather_data_local(payload, start_date,output_dir,"weather")
+    
+    record_count = len(payload["hourly"]["time"])
+    
+    print(f"Stored {record_count} raw records at {local_output}")
+
+    return {
+            "raw_path": str(local_output),
+            "record_count": record_count,
+            "data_date": start_date,
+        }
+    
 def extract_weather_for_locations() -> dict:
     params = {
         "latitude": ",".join(
@@ -38,7 +76,7 @@ def extract_weather_for_locations() -> dict:
         ),
         "hourly": ",".join(HOURLY_VARIABLES),
         "timezone": "Europe/London",
-        "past_days": 7,
+        "forecast_days": 7,
     }
 
     response = requests.get(
@@ -64,12 +102,40 @@ def extract_weather_for_locations() -> dict:
 
         validate_weather_payload(location_payload)
 
-    payload_length = len(payload)
+    fetched_at = datetime.now(timezone.utc).isoformat()
 
-    print(f"Payload received with length {payload_length}")
+    stored_payload = {
+        "fetched_at": fetched_at,
+        "locations": payload,
+    }
 
-    return payload
+    output_dir = Path(
+        f"/opt/airflow/data/raw/weather/extraction_date={fetched_at}"
+    )
 
+    local_output = store_weather_data_local(
+        payload=stored_payload,
+        data_date=fetched_at,
+        output_dir=output_dir,
+        json_file_name="weather_forecasts",
+    )
+
+    record_count = sum(
+        len(location_payload["hourly"]["time"])
+        for location_payload in payload
+    )
+
+    print(
+        f"Stored {record_count} forecast records for "
+        f"{len(payload)} locations at {local_output}"
+    )
+
+    return {
+        "raw_path": str(local_output),
+        "location_count": len(payload),
+        "record_count": record_count,
+        "fetched_at": fetched_at,
+    }
 
 def validate_weather_payload(payload: dict) -> None:
     hourly = payload.get("hourly")
